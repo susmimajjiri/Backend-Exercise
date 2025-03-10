@@ -1,0 +1,74 @@
+import click
+from .fetch_papers import fetch_papers
+@click.command()
+@click.argument('query')
+@click.option('--file', '-f', default=None, help='File name to save results')
+@click.option('--debug', '-d', is_flag=True, help='Enable debug mode')
+@click.option('--help', '-h', is_flag=True, help='Display help information')
+def cli(query, file, debug):
+    """
+    Command-line interface to fetch papers from PubMed based on a query.
+    """
+    if debug:
+        click.echo(f"Debug mode enabled. Query: {query}")
+    
+    results = fetch_papers(query)
+    
+    if file:
+        results.to_csv(file, index=False)
+        click.echo(f"Results saved to {file}")
+    else:
+        click.echo(results.to_csv(index=False))
+import requests
+import pandas as pd
+from typing import List
+
+def fetch_papers(query: str) -> pd.DataFrame:
+    """
+    Fetches papers from PubMed using the query.
+    Returns a DataFrame with the results.
+    """
+    # PubMed E-utilities API
+    base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+    
+    # Search for papers based on the query
+    search_url = f"{base_url}esearch.fcgi?db=pubmed&term={query}&retmax=100&usehistory=y"
+    search_response = requests.get(search_url)
+    search_response.raise_for_status()
+    
+    # Extract WebEnv and QueryKey for fetching results
+    webenv = search_response.text.split("<WebEnv>")[1].split("</WebEnv>")[0]
+    query_key = search_response.text.split("<QueryKey>")[1].split("</QueryKey>")[0]
+    
+    # Get details (e.g., title, author, publication date)
+    summary_url = f"{base_url}esummary.fcgi?db=pubmed&query_key={query_key}&WebEnv={webenv}&retmode=xml"
+    summary_response = requests.get(summary_url)
+    summary_response.raise_for_status()
+    
+    # Process the response into a list of dictionaries
+    papers = parse_summary_response(summary_response.text)
+    
+    # Return as a DataFrame
+    return pd.DataFrame(papers)
+
+def parse_summary_response(xml_data: str) -> List[dict]:
+    """
+    Parse the XML response to extract relevant paper data.
+    """
+    # Use simple string parsing (or XML parser) to extract paper details
+    papers = []
+    # Placeholder logic: parse XML and extract relevant fields
+    # This should be replaced with actual XML parsing code.
+    
+    # Example output format:
+    papers.append({
+        'PubmedID': '12345678',
+        'Title': 'Sample Paper Title',
+        'Publication Date': '2025-01-01',
+        'Non-academic Author(s)': 'John Doe',
+        'Company Affiliation(s)': 'Sample Pharma',
+        'Corresponding Author Email': 'johndoe@example.com'
+    })
+    
+    return papers
+
